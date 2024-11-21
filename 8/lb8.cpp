@@ -1,8 +1,11 @@
 ﻿#include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <stdbool.h>
+#include <time.h>
+#include <queue> 
 #include "locale.h"
+
+using namespace std;
 
 #define N 5  
 
@@ -21,7 +24,7 @@ void generateAdjacencyMatrix(int matrix[N][N]) {
     }
 }
 
-// матрица смежности
+
 void printAdjacencyMatrix(int matrix[N][N]) {
     printf("Матрица смежности графа G:\n");
     for (int i = 0; i < N; i++) {
@@ -32,30 +35,27 @@ void printAdjacencyMatrix(int matrix[N][N]) {
     }
 }
 
-// Обход в ширину (BFS)
-void BFS(int matrix[N][N], int startVertex) {
-    bool visited[N] = { false };
-    int queue[N];
-    int front = 0, rear = 0;
-
-    //добавляем стартовую вершину и отмечаем её как посещённую
-    queue[rear++] = startVertex;
-    visited[startVertex] = true;
+void BFS(int G[N][N], int size, int* vis, int startVertex) {
+    queue<int> q;  
+    q.push(startVertex);
+    vis[startVertex] = 1;  //стартовая вершина+пройдена
 
     printf("Обход в ширину (BFS), начиная с вершины %d:\n", startVertex);
 
-    while (front < rear) {
-        int currentVertex = queue[front++];
-        printf("Посетили вершину %d\n", currentVertex);
+    while (!q.empty()) {
+        int currentVertex = q.front();
+        printf("%d ", currentVertex);
+        q.pop();
 
-        // Проверяем всех соседей текущей вершины
-        for (int i = 0; i < N; i++) {
-            if (matrix[currentVertex][i] == 1 && !visited[i]) {
-                queue[rear++] = i;  // очередь
-                visited[i] = true; // пройдена
+        // Обход соседей
+        for (int i = 0; i < size; i++) {
+            if (G[currentVertex][i] == 1 && vis[i] == 0) {
+                q.push(i); // очередь
+                vis[i] = 1;// вершина пройдена
             }
         }
     }
+    printf("\n");
 }
 
 int main() {
@@ -63,13 +63,14 @@ int main() {
     srand(time(0));
     int adjacencyMatrix[N][N];
 
-    // печать матрицы+ ген 
     generateAdjacencyMatrix(adjacencyMatrix);
     printAdjacencyMatrix(adjacencyMatrix);
 
-    // Выполнение обхода в ширину
-    int startVertex = 0;  // первая вершина(начало обхода)
-    BFS(adjacencyMatrix, startVertex);
+    int startVertex = 0;
+
+    int visited[N] = { 0 };
+       
+    BFS(adjacencyMatrix, N, visited, startVertex);
 
     return 0;
 }
