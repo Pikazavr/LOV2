@@ -1,179 +1,168 @@
-﻿#define _CRT_SECURE_NO_WARNINGS
+﻿// lab6.cpp: Программа для работы с графами
+
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include "locale.h"
+#include <cstdlib>
+#include <locale.h>
 
+// Функция для создания графа
+int** createG(int size) {
+    int** G = (int**)malloc(size * sizeof(int*)); // Выделяем память для массива указателей
+    if (G == NULL) {
+        printf("Ошибка выделения памяти для массива указателей.\n");
+        exit(1);
+    }
 
-#define MAX_VERTICES 100
-
-// Генерация случайной матрицы смежности для графа
-void define_random_adjacency_matrix(int matrix[MAX_VERTICES][MAX_VERTICES], int size) {
     for (int i = 0; i < size; i++) {
-        for (int j = i; j < size; j++) {
-            if (i == j) {
-                matrix[i][j] = 0; // Отсутствие петель
-            }
-            else {
-                int random_value = rand() % 2;
-                matrix[i][j] = random_value;
-                matrix[j][i] = random_value; // Неориентированный граф
-            }
+        G[i] = (int*)malloc(size * sizeof(int)); // Выделяем память для каждой строки
+        if (G[i] == NULL) {
+            printf("Ошибка выделения памяти для строки %d.\n", i);
+            exit(1);
         }
     }
+
+    // Инициализация графа
+    for (int i = 0; i < size; i++) {
+        for (int j = i; j < size; j++) {
+            G[i][j] = rand() % 2;
+            if (i == j) G[i][j] = 0; // Диагональные элементы = 0
+            G[j][i] = G[i][j]; // Симметричность
+        }
+    }
+
+    return G;
 }
 
-// Вывод матрицы на экран
-void print_matrix(int matrix[MAX_VERTICES][MAX_VERTICES], int size) {
+// Функция для печати графа
+void printG(int** G, int size) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            printf("%d ", matrix[i][j]);
+            printf("%d ", G[i][j]);
         }
         printf("\n");
     }
 }
 
-// Отождествление двух вершин
-void identify_vertices(int matrix[MAX_VERTICES][MAX_VERTICES], int size, int v1, int v2) {
-    for (int i = 0; i < size; i++) {
-        if (i != v1 && i != v2) {
-            matrix[v1][i] |= matrix[v2][i];
-            matrix[i][v1] = matrix[v1][i];
+// Функция для удаления вершины из графа
+int** delV(int** G, int size, int v) {
+    int** Gtemp = (int**)malloc((size - 1) * sizeof(int*)); // Создание временного графа на одну вершину меньше
+    if (Gtemp == NULL) {
+        printf("Ошибка выделения памяти для временного графа.\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < size - 1; i++) {
+        Gtemp[i] = (int*)malloc((size - 1) * sizeof(int)); // Выделяем память для каждой строки
+        if (Gtemp[i] == NULL) {
+            printf("Ошибка выделения памяти для строки %d.\n", i);
+            exit(1);
         }
     }
 
-    for (int i = 0; i < size; i++) {
-        matrix[v2][i] = 0;
-        matrix[i][v2] = 0;
-    }
-}
-
-// Стягивание ребра
-void contract_edge(int matrix[MAX_VERTICES][MAX_VERTICES], int size, int v1, int v2) {
-    identify_vertices(matrix, size, v1, v2);
-}
-
-// Расщепление вершины
-void split_vertex(int matrix[MAX_VERTICES][MAX_VERTICES], int* size, int v) {
-    if (*size >= MAX_VERTICES) {
-        printf("\nОшибка: превышен лимит вершин.\n");
-        return;
-    }
-
-    int new_vertex = (*size)++;
-
-    for (int i = 0; i < *size; i++) {
-        matrix[new_vertex][i] = 0;
-        matrix[i][new_vertex] = 0;
-    }
-
-    for (int i = 0; i < *size; i++) {
-        if (matrix[v][i] == 1 && rand() % 2 == 0) {
-            matrix[v][i] = 0;
-            matrix[i][v] = 0;
-
-            matrix[new_vertex][i] = 1;
-            matrix[i][new_vertex] = 1;
-        }
-    }
-}
-
-// Операция объединения графов
-void union_graphs(int matrix1[MAX_VERTICES][MAX_VERTICES], int matrix2[MAX_VERTICES][MAX_VERTICES], int size1, int size2, int result[MAX_VERTICES][MAX_VERTICES]) {
-    int new_size = size1 + size2;
-
-    for (int i = 0; i < new_size; i++) {
-        for (int j = 0; j < new_size; j++) {
-            if (i < size1 && j < size1) {
-                result[i][j] = matrix1[i][j];
-            }
-            else if (i >= size1 && j >= size1) {
-                result[i][j] = matrix2[i - size1][j - size1];
-            }
-            else {
-                result[i][j] = 0;
-            }
-        }
-    }
-}
-
-// Операция пересечения графов
-void intersect_graphs(int matrix1[MAX_VERTICES][MAX_VERTICES], int matrix2[MAX_VERTICES][MAX_VERTICES], int size, int result[MAX_VERTICES][MAX_VERTICES]) {
+    // Копируем данные графа в новый граф, исключая вершину v
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            result[i][j] = matrix1[i][j] & matrix2[i][j];
+            if (i < v && j < v) Gtemp[i][j] = G[i][j];
+            if (i > v && j > v) Gtemp[i - 1][j - 1] = G[i][j];
+            if (i > v && j < v) Gtemp[i - 1][j] = G[i][j];
+            if (i < v && j > v) Gtemp[i][j - 1] = G[i][j];
         }
     }
-}
 
-// Операция кольцевой суммы графов
-void symmetric_difference_graphs(int matrix1[MAX_VERTICES][MAX_VERTICES], int matrix2[MAX_VERTICES][MAX_VERTICES], int size, int result[MAX_VERTICES][MAX_VERTICES]) {
+    // Освобождение памяти для старого графа
     for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            result[i][j] = matrix1[i][j] ^ matrix2[i][j];
-        }
+        free(G[i]);
     }
+    free(G);
+
+    return Gtemp;
 }
 
+// Функция для объединения двух вершин в графе
+void unionV(int** G, int size, int v1, int v2) {
+    for (int i = 0; i < size; i++) {
+        if (G[v2][i] == 1) {
+            G[v1][i] = G[v2][i];
+            G[i][v1] = G[i][v2];
+        }
+    }
+
+    // Удаляем вершину v2 из графа
+    G = delV(G, size, v2);
+    printG(G, size);
+}
+
+// Функция для объединения двух графов
+int** unionG(int** G1, int** G2, int size1, int size2) {
+    int sizemax = (size1 > size2) ? size1 : size2;
+    int sizemin = (size1 < size2) ? size1 : size2;
+    int** Gtemp = (int**)malloc(sizemax * sizeof(int*));
+
+    if (Gtemp == NULL) {
+        printf("Ошибка выделения памяти для объединённого графа.\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < sizemax; i++) {
+        Gtemp[i] = (int*)malloc(sizemax * sizeof(int));
+        if (Gtemp[i] == NULL) {
+            printf("Ошибка выделения памяти для строки %d объединённого графа.\n", i);
+            exit(1);
+        }
+    }
+
+    // Объединяем графы
+    for (int i = 0; i < sizemin; i++) {
+        for (int j = 0; j < sizemin; j++) {
+            Gtemp[i][j] = G1[i][j] | G2[i][j];
+        }
+    }
+
+    // Добавляем элементы из большего графа в объединённый
+    for (int i = 0; i < sizemax; i++) {
+        for (int j = sizemin; j < sizemax; j++) {
+            Gtemp[i][j] = G1[i][j];
+            Gtemp[j][i] = Gtemp[i][j];
+        }
+    }
+
+    return Gtemp;
+}
+
+// Главная функция
 int main() {
-    setlocale(LC_ALL, "Rus");
-    srand(time(0));
+    setlocale(LC_ALL, "Russian");
+    int nG1 = 3, nG2 = 5;
+    printf("Введите размерность графа G1: ");
+    scanf("%d", &nG1);
+    printf("Введите размерность графа G2: ");
+    scanf("%d", &nG2);
 
-    int size1, size2;
-    int graph1[MAX_VERTICES][MAX_VERTICES];
-    int graph2[MAX_VERTICES][MAX_VERTICES];
+    int** G1 = createG(nG1);
+    int** G2 = createG(nG2);
 
-    printf("Введите количество вершин графа G1: ");
-    scanf("%d", &size1);
-    define_random_adjacency_matrix(graph1, size1);
+    printf("\nГраф G1:\n");
+    printG(G1, nG1);
 
-    printf("Введите количество вершин графа G2: ");
-    scanf("%d", &size2);
-    define_random_adjacency_matrix(graph2, size2);
+    printf("\nГраф G2:\n");
+    printG(G2, nG2);
 
-    printf("\nМатрица смежности G1:\n");
-    print_matrix(graph1, size1);
+    G1 = delV(G1, nG1, 1); // Пример удаления вершины 1 из G1
+    nG1--; // Уменьшаем размерность графа
 
-    printf("\nМатрица смежности G2:\n");
-    print_matrix(graph2, size2);
+    printf("\nГраф G1 после удаления вершины 1:\n");
+    printG(G1, nG1);
 
-    int v1, v2;
+    // Освобождение памяти после использования
+    for (int i = 0; i < nG1; i++) {
+        free(G1[i]);
+    }
+    free(G1);
 
-    // Операции с вершинами
-    printf("\nВыберите вершины для отождествления в G1 (v1 v2): ");
-    scanf("%d %d", &v1, &v2);
-    identify_vertices(graph1, size1, v1, v2);
-    printf("\nМатрица после отождествления:\n");
-    print_matrix(graph1, size1);
-
-    printf("\nВыберите вершины для стягивания ребра в G1 (v1 v2): ");
-    scanf("%d %d", &v1, &v2);
-    contract_edge(graph1, size1, v1, v2);
-    printf("\nМатрица после стягивания:\n");
-    print_matrix(graph1, size1);
-
-    printf("\nВыберите вершину для расщепления в G1 (v): ");
-    scanf("%d", &v1);
-    split_vertex(graph1, &size1, v1);
-    printf("\nМатрица после расщепления:\n");
-    print_matrix(graph1, size1);
-
-    // Операции с графами
-    int union_result[MAX_VERTICES][MAX_VERTICES];
-    int intersection_result[MAX_VERTICES][MAX_VERTICES];
-    int sym_diff_result[MAX_VERTICES][MAX_VERTICES];
-
-    union_graphs(graph1, graph2, size1, size2, union_result);
-    printf("\nМатрица объединения G = G1 ∪ G2:\n");
-    print_matrix(union_result, size1 + size2);
-
-    intersect_graphs(graph1, graph2, size1, intersection_result);
-    printf("\nМатрица пересечения G = G1 ∩ G2:\n");
-    print_matrix(intersection_result, size1);
-
-    symmetric_difference_graphs(graph1, graph2, size1, sym_diff_result);
-    printf("\nМатрица кольцевой суммы G = G1 ∆ G2:\n");
-    print_matrix(sym_diff_result, size1);
+    for (int i = 0; i < nG2; i++) {
+        free(G2[i]);
+    }
+    free(G2);
 
     return 0;
 }
